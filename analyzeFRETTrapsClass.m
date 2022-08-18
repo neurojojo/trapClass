@@ -8,11 +8,8 @@ classdef analyzeFRETTrapsClass < handle
     %
     
     properties
-        x_
-        y_
         metadata
-        tracksTable
-        segsTable
+        fretTable
         % Tables created within the class
         trap_rois_tbl
         traps_segs_join_tbl
@@ -26,11 +23,17 @@ classdef analyzeFRETTrapsClass < handle
         %%%%%%%%%%%%%%%%%%%%%%%%
         % CONSTRUCTOR FUNCTION %
         %%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = analyzeTrapsClass( fretTraces )
+        function obj = analyzeFRETTrapsClass( fretTraces )
             
-            obj.x_ = arrayfun( @(i) fretTraces.Ch2.x(i,:) , [1:size(fretTraces.Ch2.x,1)], 'UniformOutput', false );
-            obj.y_ = arrayfun( @(i) fretTraces.Ch2.y(i,:) , [1:size(fretTraces.Ch2.y,1)], 'UniformOutput', false );
-
+            [x_zero,y_zero,I_zero] = deal( fretTraces.Ch2.x(end,1),fretTraces.Ch2.y(end,1),...
+                fretTraces.Ch2.int(end,1) );
+            x = arrayfun( @(i) fretTraces.Ch2.x(i, fretTraces.Ch2.x(i,:)>x_zero ) ,...
+                [1:size(fretTraces.Ch2.x,1)], 'UniformOutput', false );
+            y = arrayfun( @(i) fretTraces.Ch2.y(i, fretTraces.Ch2.y(i,:)>y_zero ) ,...
+                [1:size(fretTraces.Ch2.y,1)], 'UniformOutput', false );
+            ch2_int = arrayfun( @(i) fretTraces.Ch2.y(i, fretTraces.Ch2.int(i,:)>y_zero ) ,...
+                [1:size(fretTraces.Ch2.int,1)], 'UniformOutput', false );
+%             obj.fretTable = table( x,y,fret );
         end
 
         function showImmobileConfined(obj)

@@ -6,6 +6,8 @@ classdef simulationClass < handle
 %     simulation = simulationClass();
 %     simulation.addObjects( molecules );
 %     simulation.addObjects( traps );
+
+%     simulation.viewTrack( moleculeNumber );
     
     properties
         molecules % Either one moleculeClass object or a cell array of moleculeClass objects
@@ -20,6 +22,9 @@ classdef simulationClass < handle
         frame_height = 1000;
         frame_width = 2000;
         frames = 1000;
+        
+        % Analysis outputs
+        trapped_table % A table with columns molecule #, frame #, x, y, trapped (1) or not trapped (0)
     end
     
     methods
@@ -59,36 +64,51 @@ classdef simulationClass < handle
         
         function outputSimulation(obj)
            
+            % Clear out previous simulation
+            for j = 1:numel(obj.molecules); obj.molecules{j}.x = obj.molecules{j}.x(1); end;
+            for j = 1:numel(obj.molecules); obj.molecules{j}.y = obj.molecules{j}.y(1); end;
+            
             % Extract trap x,y locations
             [trap_x,trap_y] = deal( cellfun( @(x) x.x0 , obj.traps )',...
                                     cellfun( @(x) x.y0 , obj.traps )' );
             
-            for i = 1 : obj.frames
+            trapped_table = table();
+            
+            for i = 2 : obj.frames
                 for j = 1: obj.Nmolecules
                     degree1 = 2*pi()*rand();
                     d = obj.molecules{j}.d;
-                    dist_to_traps = pdist2( [obj.molecules{j}.x(i),obj.molecules{j}.y(i)],...
+                    dist_to_traps = pdist2( [obj.molecules{j}.x(i-1),obj.molecules{j}.y(i-1)],...
                                             [trap_x,trap_y] );
                     
                     % Check if the molecules current position is near enough to a trap
-                    if dist_to_traps > obj.trapRadius % Trap radius
+                    if all( dist_to_traps > obj.trapRadius ) % Trap radius
                         obj.molecules{j}.x = ...
                             [ obj.molecules{j}.x,...
-                            obj.molecules{j}.x(i) + d*cos(degree1) ];
+                            obj.molecules{j}.x(i-1) + d*cos(degree1) ];
                         obj.molecules{j}.y = ...
                             [ obj.molecules{j}.y,...
-                            obj.molecules{j}.y(i) + d*sin(degree1) ];
+                            obj.molecules{j}.y(i-1) + d*sin(degree1) ];
                     else
                         obj.molecules{j}.x = ...
                             [ obj.molecules{j}.x, ...
-                            obj.molecules{j}.x(i) + (rand()>0.9)*5 + (d/10)*cos(degree1) ];
+                            obj.molecules{j}.x(i-1) + (d/1000)*cos(degree1) ];
                         obj.molecules{j}.y = ...
                             [ obj.molecules{j}.y, ...
-                            obj.molecules{j}.y(i) + (rand()>0.9)*5 + (d/10)*sin(degree1) ];
+                            obj.molecules{j}.y(i-1) + (d/1000)*sin(degree1) ];
+                        trapped_table = [trapped_table; ...
+                            table(j,i,obj.molecules{j}.x(i),obj.molecules{j}.y(i),1) ];
                     end
                     
                 end % Loop over obj.molecules
             end % Loop over obj.frames
+            obj.trapped_table = trapped_table;
+        end
+        
+        function viewTrack( obj, moleculeNumber )
+        
+            figure(); plot( obj.molecules{moleculeNumber}.x,...
+                obj.molecules{moleculeNumber}.y )
             
         end
         
@@ -103,6 +123,9 @@ classdef simulationClass < handle
             for i = 1:obj.frames
                 arrayfun(@(Nmolecules) plot( ax, obj.molecules{Nmolecules}.x(1:i),...
                     obj.molecules{Nmolecules}.y(1:i) ), [1:obj.Nmolecules] );
+                % Plot traps
+                plot( cellfun(@(x) x.x0, obj.traps ),...
+                    cellfun(@(x) x.y0, obj.traps ), 'ro', 'MarkerSize',6 );
                 pause(0.1);
                 cla;
             end
